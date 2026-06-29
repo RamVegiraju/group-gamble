@@ -14,6 +14,32 @@ export default function BetCard({ bet, me, isHost, act }) {
   const open = bet.status === "open";
   const settled = bet.status === "settled";
 
+  const total = bet.totalPool;
+  // Current parimutuel odds for an outcome = total pool / that outcome's pool.
+  const oddsFor = (o) => (total > 0 && o.pool > 0 ? total / o.pool : null);
+
+  // Live payout estimate for the picked outcome at the entered stake. Parimutuel
+  // includes your own stake in the pool, and re-betting replaces your old stake —
+  // so strip any existing wager first, then add the new one.
+  const stake = Math.floor(Number(amount)) || 0;
+  const pickedOutcome = bet.outcomes.find((o) => o.id === picked);
+  let preview = null;
+  if (open && me && pickedOutcome && stake > 0) {
+    const myOld = bet.myWager;
+    const baseTotal = total - (myOld ? myOld.amount : 0);
+    const basePool =
+      pickedOutcome.pool - (myOld && myOld.outcomeId === pickedOutcome.id ? myOld.amount : 0);
+    const newPool = basePool + stake;
+    const newTotal = baseTotal + stake;
+    const payout = newPool > 0 ? (stake / newPool) * newTotal : stake;
+    preview = {
+      label: pickedOutcome.label,
+      payout: Math.round(payout),
+      net: Math.round(payout - stake),
+      mult: payout / stake,
+    };
+  }
+
   return (
     <div className={"bet" + (settled ? " settled" : "")}>
       <div className="bet-head">
@@ -68,7 +94,12 @@ export default function BetCard({ bet, me, isHost, act }) {
               <span className="o-label">{o.label}</span>
               <span className="o-meta">
                 {o.isWinner && "✅ "}
-                {Math.round(o.share * 100)}%
+                {oddsFor(o) ? (
+                  <span className="odds">{oddsFor(o).toFixed(2)}×</span>
+                ) : (
+                  <span className="odds muted">—</span>
+                )}
+                <span className="o-share">{Math.round(o.share * 100)}%</span>
               </span>
               {mine && <span className="o-mine">you: {fmt(bet.myWager.amount)}</span>}
             </button>
@@ -97,6 +128,13 @@ export default function BetCard({ bet, me, isHost, act }) {
               {!picked ? "Pick a side first" : bet.myWager ? "Update bet" : "Place bet"}
             </button>
           </div>
+          {preview && (
+            <div className="payout-preview">
+              If <b>{preview.label}</b> wins → <b>{fmt(preview.payout)}</b> coins
+              <span className="net"> (+{fmt(preview.net)})</span>
+              <span className="muted"> · {preview.mult.toFixed(2)}× your stake</span>
+            </div>
+          )}
         </>
       )}
 
