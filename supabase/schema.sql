@@ -268,6 +268,12 @@ begin
   if coalesce(trim(p_name), '') = '' or coalesce(trim(p_host_name), '') = '' then
     raise exception 'Session name and your name are required.';
   end if;
+
+  -- Cap total sessions to stay well under free-tier DB limits.
+  if (select count(*) from sessions) >= 100 then
+    raise exception 'GroupGamble is at capacity (100 sessions). Ask a host to wrap one up and try again.';
+  end if;
+
   v_bal := coalesce(p_starting_balance, 1000);
   if v_bal < 1 then v_bal := 1000; end if;
 
