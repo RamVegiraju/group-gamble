@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.claude/settings.local.json
+server/sidebet.db
+server/sidebet.db-*
+.DS_Store
+*.log
+.env
+.env.local
+client/.env
+client/.env.local
